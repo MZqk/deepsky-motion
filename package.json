@@ -1,0 +1,17 @@
+{
+  "name": "deepsky-motion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-only deep-sky astrophotography studio: turn a single astrophoto into a 3D parallax dolly-in video and live images.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server/index.mjs",
+    "dev": "node --watch server/index.mjs",
+    "samples": "node tools/make-samples.mjs",
+    "test": "node --test 'test/*.test.mjs'"
+  },
+  "dependencies": {
+    "sharp": "^0.34.0"
+  }
+}

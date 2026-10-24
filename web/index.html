@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<title>deepsky-motion · 深空视差工作室</title>
+<meta name="description" content="本地深空摄影视差工作室：把一张深空照片变成 3D 推进视频与实况照片。" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%235eead4' stroke-width='1.5' opacity='.55'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%235eead4'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="sky-glow" aria-hidden="true"></div>
+<div class="sky-grid" aria-hidden="true"></div>
+
+<a class="skip-link" href="#stage-viewport">跳到预览画布</a>
+
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+      <circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="1.25" opacity="0.5" />
+      <circle cx="16" cy="16" r="7.5" fill="none" stroke="currentColor" stroke-width="1" opacity="0.32" stroke-dasharray="2 3" />
+      <circle cx="16" cy="16" r="4" fill="currentColor" />
+      <circle cx="26.5" cy="7" r="1.6" fill="currentColor" opacity="0.85" />
+    </svg>
+    <div class="brand-text">
+      <h1>deepsky-motion</h1>
+      <p>深空视差工作室</p>
+    </div>
+  </div>
+
+  <div class="topbar-meta">
+    <span class="chip chip-ghost" id="engine-chip" title="预览渲染后端">
+      <span class="dot" id="engine-dot"></span><span id="engine-label">渲染后端检测中…</span>
+    </span>
+    <span class="chip chip-ghost" id="health-chip" title="本地服务状态">
+      <span class="dot" id="health-dot"></span><span id="health-label">服务检测中…</span>
+    </span>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- ===================== STAGE ===================== -->
+  <section class="stage" aria-labelledby="stage-title">
+    <div class="stage-bar">
+      <div class="stage-bar-left">
+        <h2 id="stage-title">导出结果预览</h2>
+        <span class="hint" id="scene-hint">尚未载入素材</span>
+      </div>
+      <div class="stage-bar-right">
+        <button type="button" class="btn btn-primary" id="btn-preview" disabled>生成准确预览</button>
+        <span class="readout" id="readout-stars" title="参与预览的星点数">星点 <b>—</b></span>
+        <span class="readout" id="readout-fps" title="预览帧率">帧率 <b>—</b></span>
+        <button type="button" class="btn btn-icon" id="btn-thirds" aria-pressed="true" title="三分构图线（G）">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.33 1v14M10.67 1v14M1 5.33h14M1 10.67h14" fill="none" stroke="currentColor" stroke-width="1"/></svg>
+          <span>三分线</span>
+        </button>
+        <button type="button" class="btn btn-icon" id="btn-replay" title="从头播放（R）">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8a5 5 0 1 1 1.6 3.67" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M3 4.2V8h3.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>重播</span>
+        </button>
+        <button type="button" class="btn btn-icon btn-primary-ghost" id="btn-play" aria-pressed="true" title="播放 / 暂停（空格）">
+          <svg viewBox="0 0 16 16" aria-hidden="true" class="ico-pause"><path d="M5.5 3v10M10.5 3v10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <svg viewBox="0 0 16 16" aria-hidden="true" class="ico-play" hidden><path d="M5 3.2l7.4 4.8L5 12.8z" fill="currentColor"/></svg>
+          <span id="play-label">暂停</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="stage-viewport" id="stage-viewport" tabindex="0" role="region" aria-label="导出结果预览">
+      <div class="canvas-wrap" id="canvas-wrap">
+        <canvas id="stage-canvas" tabindex="0" role="img"
+                aria-label="最终导出画面预览"></canvas>
+        <div class="thirds" id="thirds" aria-hidden="true">
+          <span class="v1"></span><span class="v2"></span><span class="h1"></span><span class="h2"></span>
+        </div>
+
+        <div class="canvas-empty" id="canvas-empty">
+          <div class="empty-orb" aria-hidden="true"></div>
+          <h3>把一张深空照片拖进来</h3>
+          <p>支持 FITS / TIFF / PNG / JPEG / WebP。上传后点「分析」，再「生成准确预览」。</p>
+          <div class="empty-actions">
+            <button type="button" class="btn btn-primary" id="btn-empty-pick">选择文件</button>
+            <button type="button" class="btn" id="btn-empty-sample">载入示例</button>
+          </div>
+        </div>
+
+        <div class="canvas-busy" id="canvas-busy" hidden>
+          <div class="spinner" aria-hidden="true"></div>
+          <p id="busy-label">分析中…</p>
+          <span class="mono" id="busy-elapsed">0.0s</span>
+        </div>
+
+        <div class="badge-corner" id="badge-src" hidden></div>
+      </div>
+    </div>
+
+    <div class="scrubber">
+      <label class="scrub-label" for="scrub">推进</label>
+      <div class="scrub-track">
+        <input type="range" id="scrub" min="0" max="1000" value="0" step="1"
+               aria-label="推进进度" aria-valuetext="0%" />
+      </div>
+      <output class="scrub-out mono" id="scrub-out" for="scrub">0.0%</output>
+      <span class="scrub-sep" aria-hidden="true"></span>
+      <output class="scrub-out mono" id="time-out" title="当前帧时间 / 总时长">0.00 / 6.00s</output>
+    </div>
+  </section>
+
+  <!-- ===================== RAIL ===================== -->
+  <aside class="rail" aria-label="控制面板">
+
+    <!-- ---------- 素材 ---------- -->
+    <section class="panel" aria-labelledby="p-source">
+      <header class="panel-head">
+        <h2 id="p-source"><span class="step">01</span>素材</h2>
+      </header>
+      <div class="panel-body">
+        <div class="dropzone" id="dropzone" tabindex="0" role="button"
+             aria-label="拖放或点击选择深空照片">
+          <svg class="dz-ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3.5 15v3.5A1.5 1.5 0 0 0 5 20h14a1.5 1.5 0 0 0 1.5-1.5V15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <p class="dz-title">拖放到这里，或 <span class="link">选择文件</span></p>
+          <p class="dz-sub">单张照片 · 建议长边 ≥ 1600px</p>
+          <input type="file" id="file-input" class="sr-only"
+                 accept=".fits,.fit,.fts,.tif,.tiff,.png,.jpg,.jpeg,.webp,.avif,.gif,.bmp,.heic,.heif,image/*" />
+        </div>
+
+        <div class="row row-2">
+          <button type="button" class="btn btn-block" id="btn-sample">载入示例</button>
+          <button type="button" class="btn btn-block" id="btn-clear" disabled>清空</button>
+        </div>
+
+        <div class="source-meta" id="source-meta" hidden>
+          <div class="kv"><span>文件</span><b class="mono" id="src-name">—</b></div>
+          <div class="kv"><span>尺寸</span><b class="mono" id="src-dims">—</b></div>
+          <div class="kv"><span>上传 ID</span><b class="mono" id="src-id">—</b></div>
+          <div class="warnings" id="src-warnings" hidden></div>
+        </div>
+
+        <button type="button" class="btn btn-primary btn-block" id="btn-analyze" disabled>
+          <span class="btn-spin" aria-hidden="true"></span>
+          <span id="analyze-label">分析</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ---------- 分析 ---------- -->
+    <section class="panel" aria-labelledby="p-analysis">
+      <header class="panel-head">
+        <h2 id="p-analysis"><span class="step">02</span>分析</h2>
+        <span class="panel-tag" id="analysis-tag">未分析</span>
+      </header>
+      <div class="panel-body">
+        <div class="stats" id="stats">
+          <div class="stat"><span class="stat-k">星点数</span><b class="mono" id="st-count">—</b></div>
+          <div class="stat"><span class="stat-k">中位 FWHM</span><b class="mono" id="st-fwhm">—</b></div>
+          <div class="stat"><span class="stat-k">中位椭率</span><b class="mono" id="st-ellip">—</b></div>
+          <div class="stat"><span class="stat-k">面密度</span><b class="mono" id="st-density">—</b></div>
+        </div>
+
+        <figure class="hist">
+          <figcaption>
+            <span>深度分布</span>
+            <span class="mono muted" id="hist-range">近 — · 远 —</span>
+          </figcaption>
+          <canvas id="hist-canvas" width="640" height="180" role="img"
+                  aria-label="星点深度直方图：横轴为深度，纵轴为星点数"></canvas>
+        </figure>
+
+        <p class="notes" id="analysis-notes" hidden></p>
+      </div>
+    </section>
+
+    <!-- ---------- 参数 ---------- -->
+    <section class="panel" aria-labelledby="p-params">
+      <header class="panel-head">
+        <h2 id="p-params"><span class="step">03</span>参数</h2>
+        <button type="button" class="btn btn-tiny" id="btn-reset">重置</button>
+      </header>
+      <div class="panel-body">
+        <div class="presets" id="presets" role="group" aria-label="预设">
+          <button type="button" class="chip-btn" data-preset="natural">自然</button>
+          <button type="button" class="chip-btn" data-preset="dreamy">梦幻</button>
+          <button type="button" class="chip-btn" data-preset="deep">纵深</button>
+          <button type="button" class="chip-btn" data-preset="subtle">克制</button>
+        </div>
+        <div class="params" id="params"><!-- generated from RenderParams spec --></div>
+      </div>
+    </section>
+
+    <!-- ---------- 导出 ---------- -->
+    <section class="panel" aria-labelledby="p-export">
+      <header class="panel-head">
+        <h2 id="p-export"><span class="step">04</span>导出</h2>
+      </header>
+      <div class="panel-body">
+        <div class="field">
+          <label for="format">输出格式</label>
+          <select id="format">
+            <option value="mp4" selected>MP4 视频（H.264）</option>
+            <option value="livephoto">实况照片 Live Photo（Apple）</option>
+            <option value="motionphoto">动态照片 Motion Photo（Google）</option>
+            <option value="webp">动态 WebP</option>
+            <option value="apng">动态 PNG（APNG）</option>
+            <option value="gif">GIF</option>
+          </select>
+        </div>
+        <p class="field-note" id="format-note">兼容性最好，适合社交平台与归档。</p>
+
+        <button type="button" class="btn btn-primary btn-block btn-lg" id="btn-render" disabled>
+          <span class="btn-spin" aria-hidden="true"></span>
+          <span id="render-label">生成并导出</span>
+        </button>
+
+        <div class="progress-wrap" id="progress-wrap" hidden>
+          <div class="progress-head">
+            <span id="job-stage">排队中</span>
+            <span class="mono" id="job-pct">0%</span>
+          </div>
+          <div class="progress" role="progressbar" aria-labelledby="job-stage"
+               aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressbar">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <div class="progress-foot">
+            <span class="muted" id="job-message">正在准备…</span>
+            <button type="button" class="btn btn-tiny btn-danger" id="btn-cancel">取消</button>
+          </div>
+        </div>
+
+        <div class="artifacts" id="artifacts" hidden>
+          <h3>产出文件</h3>
+          <div class="artifact-preview" id="artifact-preview" hidden></div>
+          <ul class="artifact-list" id="artifact-list"></ul>
+        </div>
+
+        <p class="job-status sr-only" id="job-status" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+  </aside>
+</main>
+
+<footer class="statusbar">
+  <span class="status-msg" id="status-msg">就绪 · 拖入一张深空照片开始</span>
+  <span class="status-right">
+    <span class="mono" id="status-res">—</span>
+    <span class="sep" aria-hidden="true">·</span>
+    <span class="mono" id="status-backend">—</span>
+    <span class="sep" aria-hidden="true">·</span>
+    <span class="mono">v<span id="status-version">0.1.0</span></span>
+  </span>
+</footer>
+
+<div class="toasts" id="toasts" role="region" aria-label="通知" aria-live="polite"></div>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>
